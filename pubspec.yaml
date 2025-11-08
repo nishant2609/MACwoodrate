@@ -1,0 +1,29 @@
+name: macwoodrate
+description: A Flutter app to calculate the cost of manufacturing wooden dining tables.
+publish_to: 'none'
+
+environment:
+  sdk: ">=2.17.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Existing dependencies
+  pdf: ^3.10.4
+  path_provider: ^2.1.1
+  intl: ^0.18.1
+
+  # New dependencies
+  printing: ^5.11.0
+  image_picker: ^1.0.4
+
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
