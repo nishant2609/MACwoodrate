@@ -3,6 +3,9 @@ import 'package:intl/intl.dart';
 import '../models/order.dart';
 import '../utils/order_storage.dart';
 import 'result_screen.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/order_service.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -25,9 +28,24 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
   Future<void> _loadOrders() async {
     try {
-      final loadedOrders = await OrderStorage.readOrders();
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      List<Order> loadedOrders = [];
+
+      // Try Firestore first
+      if (authProvider.currentCompany != null) {
+        final orderService = OrderService();
+        loadedOrders = await orderService.getOrders(
+            authProvider.currentCompany!.id);
+      }
+
+      // Fallback to local if Firestore empty
+      if (loadedOrders.isEmpty) {
+        loadedOrders = await OrderStorage.readOrders();
+      }
+
       setState(() {
-        orders = loadedOrders.reversed.toList(); // Show newest first
+        orders = loadedOrders;
         isLoading = false;
       });
     } catch (e) {
@@ -59,7 +77,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Order'),
-          content: Text('Are you sure you want to delete order ${order.orderId}?'),
+          content: Text(
+              'Are you sure you want to delete order ${order.orderId}?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -67,7 +86,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              child: const Text('Delete',
+                  style: TextStyle(color: Colors.red)),
             ),
           ],
         );
@@ -76,8 +96,19 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
     if (confirmed == true) {
       try {
+        // Delete from local storage
         await OrderStorage.deleteOrder(order.orderId);
-        await _loadOrders(); // Refresh the list
+
+        // Delete from Firestore
+        final authProvider =
+        Provider.of<AuthProvider>(context, listen: false);
+        if (authProvider.currentCompany != null) {
+          final orderService = OrderService();
+          await orderService.deleteOrder(
+              order.orderId, authProvider.currentCompany!.id);
+        }
+
+        await _loadOrders();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Order deleted successfully'),

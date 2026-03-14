@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/order_service.dart';
 import '../models/wood_component.dart';
 import '../models/order.dart';
 import '../widgets/wood_input_tile.dart';
@@ -188,7 +191,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     try {
+      // Save to local storage
       await OrderStorage.saveOrder(order);
+
+      // Save to Firestore
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.currentCompany != null) {
+        final orderService = OrderService();
+        await orderService.saveOrder(order, authProvider.currentCompany!.id);
+      }
+
       Navigator.of(context).pop();
 
       // Reset wood type after saving order
