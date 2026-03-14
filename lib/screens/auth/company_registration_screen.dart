@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/company_service.dart';
 import '../menu_screen.dart';
+import 'login_screen.dart';
 
 class CompanyRegistrationScreen extends StatefulWidget {
   const CompanyRegistrationScreen({super.key});
@@ -90,6 +91,12 @@ class _CompanyRegistrationScreenState
           TextButton(
             onPressed: () async {
               await authProvider.signOut();
+              if (!context.mounted) return;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const LoginScreen()),
+              );
             },
             child: const Text(
               'Logout',

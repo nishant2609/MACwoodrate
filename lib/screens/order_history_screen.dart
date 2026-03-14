@@ -41,9 +41,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             authProvider.currentCompany!.id);
       }
 
-      if (loadedOrders.isEmpty) {
-        loadedOrders = await OrderStorage.readOrders();
-      }
 
       setState(() {
         orders = loadedOrders;

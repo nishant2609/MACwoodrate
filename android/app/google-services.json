@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "1025458686246-jcjhihb03st1tluv5t0sfen0n2p8r5hr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nishantcreation.woodratepro",
+            "certificate_hash": "5f51794e830a41312544c91822028b5dbc3434d0"
+          }
+        },
+        {
           "client_id": "1025458686246-33h2kkq6vif5aqve6g5ibdsak76d0sjj.apps.googleusercontent.com",
           "client_type": 3
         }
