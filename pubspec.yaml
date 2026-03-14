@@ -1,24 +1,25 @@
-name: macwoodrate
-description: A Flutter app to calculate the cost of manufacturing wooden dining tables.
+name: woodratepro
+description: WoodRate Pro - Wood Cost Calculator by NishantCreation
 publish_to: 'none'
+version: 1.0.0+1
 
 environment:
-  sdk: ">=2.17.0 <3.0.0"
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-
-  # Existing dependencies
+  cupertino_icons: ^1.0.2
   pdf: ^3.10.4
+  printing: ^5.11.0
   path_provider: ^2.1.1
   intl: ^0.18.1
-
-  # New dependencies
-  printing: ^5.11.0
   image_picker: ^1.0.4
-
-  cupertino_icons: ^1.0.2
+  provider: ^6.1.1
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  google_sign_in: ^6.2.1
 
 dev_dependencies:
   flutter_test:

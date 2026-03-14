@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1025458686246",
+    "project_id": "woodratepro",
+    "storage_bucket": "woodratepro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1025458686246:android:ddfdd7497b67f3833b59e7",
+        "android_client_info": {
+          "package_name": "com.nishantcreation.woodratepro"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1025458686246-0c5b40eljvb7m5nbs18qjhuvschouuas.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nishantcreation.woodratepro",
+            "certificate_hash": "27715af8b8f764f67eaa383db3b297aac82b3953"
+          }
+        },
+        {
+          "client_id": "1025458686246-33h2kkq6vif5aqve6g5ibdsak76d0sjj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB523usCrSfP7Eg_etaRpNMjGgOc6sEjfE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1025458686246-33h2kkq6vif5aqve6g5ibdsak76d0sjj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

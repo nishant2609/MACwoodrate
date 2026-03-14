@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'NJ Creations - Wood Calculator',
+      title: 'WoodRate Pro',
       theme: ThemeData(
         primarySwatch: Colors.brown,
         useMaterial3: true,

@@ -5,12 +5,12 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/order.dart';
+import '../utils/company_profile.dart';
 
 class PDFGenerator {
   static Future<File> generate(Order order) async {
     final pdf = await _createPDF(order);
 
-    // Save PDF to Downloads folder on Android
     String downloadsPath;
     try {
       final directory = await getExternalStorageDirectory();
@@ -25,13 +25,13 @@ class PDFGenerator {
       downloadsPath = appDir.path;
     }
 
-    // Create downloads directory if it doesn't exist
     final downloadsDir = Directory(downloadsPath);
     if (!await downloadsDir.exists()) {
       await downloadsDir.create(recursive: true);
     }
 
-    final file = File("$downloadsPath/order_${order.orderId}_${DateTime.now().millisecondsSinceEpoch}.pdf");
+    final file = File(
+        "$downloadsPath/order_${order.orderId}_${DateTime.now().millisecondsSinceEpoch}.pdf");
     await file.writeAsBytes(await pdf.save());
     return file;
   }
@@ -44,23 +44,24 @@ class PDFGenerator {
   static Future<pw.Document> _createPDF(Order order) async {
     final pdf = pw.Document();
     final dateFormat = DateFormat('dd-MM-yyyy HH:mm');
-
-    // Use a more explicit currency formatter for better symbol display
     final currencyFormat = NumberFormat('#,##,##0.00', 'en_IN');
+
+    // Load dynamic company name
+    final companyName =
+        await CompanyProfile.getCompanyName() ?? 'WoodRate Pro';
 
     String formatCurrency(double amount) {
       return 'Rs.${currencyFormat.format(amount)}';
     }
 
-    // Calculate wood subtotal
     double woodSubtotal = order.woodTotal;
-    double otherCosts = order.labour + order.hardware + order.factory + order.additionalChargesTotal;
+    double otherCosts =
+        order.labour + order.hardware + order.factory + order.additionalChargesTotal;
     double subtotalBeforeProfit = woodSubtotal + otherCosts;
+    double profitPercentage = subtotalBeforeProfit > 0
+        ? (order.profit / subtotalBeforeProfit) * 100
+        : 0;
 
-    // Calculate profit percentage from the stored profit amount
-    double profitPercentage = subtotalBeforeProfit > 0 ? (order.profit / subtotalBeforeProfit) * 100 : 0;
-
-    // Load item image if available
     pw.ImageProvider? itemImage;
     if (order.itemImagePath != null) {
       try {
@@ -70,7 +71,6 @@ class PDFGenerator {
           itemImage = pw.MemoryImage(imageBytes);
         }
       } catch (e) {
-        // If image loading fails, continue without image
         itemImage = null;
       }
     }
@@ -96,7 +96,7 @@ class PDFGenerator {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(
-                        "MacWoodRate",
+                        companyName,
                         style: pw.TextStyle(
                           fontSize: 28,
                           fontWeight: pw.FontWeight.bold,
@@ -115,7 +115,7 @@ class PDFGenerator {
                   ),
                   pw.SizedBox(height: 10),
                   pw.Text(
-                    "Dining Table Manufacturing Cost Report",
+                    "Manufacturing Cost Report",
                     style: pw.TextStyle(
                       fontSize: 14,
                       color: PdfColors.brown700,
@@ -138,7 +138,6 @@ class PDFGenerator {
               child: pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  // Order details column
                   pw.Expanded(
                     flex: 3,
                     child: pw.Column(
@@ -165,11 +164,13 @@ class PDFGenerator {
                               ],
                             ),
                             pw.Container(
-                              padding: const pw.EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                              padding: const pw.EdgeInsets.symmetric(
+                                  horizontal: 15, vertical: 8),
                               decoration: pw.BoxDecoration(
                                 color: PdfColors.green100,
                                 borderRadius: pw.BorderRadius.circular(15),
-                                border: pw.Border.all(color: PdfColors.green300),
+                                border:
+                                pw.Border.all(color: PdfColors.green300),
                               ),
                               child: pw.Text(
                                 "CONFIRMED",
@@ -217,8 +218,6 @@ class PDFGenerator {
                       ],
                     ),
                   ),
-
-                  // Item image column (if available)
                   if (itemImage != null) ...[
                     pw.SizedBox(width: 15),
                     pw.Container(
@@ -228,10 +227,7 @@ class PDFGenerator {
                         border: pw.Border.all(color: PdfColors.grey400),
                         borderRadius: pw.BorderRadius.circular(5),
                       ),
-                      child: pw.Image(
-                        itemImage,
-                        fit: pw.BoxFit.cover,
-                      ),
+                      child: pw.Image(itemImage, fit: pw.BoxFit.cover),
                     ),
                   ],
                 ],
@@ -240,7 +236,7 @@ class PDFGenerator {
 
             pw.SizedBox(height: 25),
 
-            // Wood Components Section
+            // Wood Components
             pw.Text(
               "Wood Components",
               style: pw.TextStyle(
@@ -251,7 +247,6 @@ class PDFGenerator {
             ),
             pw.SizedBox(height: 10),
 
-            // Wood Components Table
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.grey400),
               columnWidths: {
@@ -263,108 +258,120 @@ class PDFGenerator {
                 5: const pw.FlexColumnWidth(1.2),
               },
               children: [
-                // Table Header
                 pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                  decoration:
+                  const pw.BoxDecoration(color: PdfColors.grey200),
                   children: [
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(
-                        "Wood Type",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-                      ),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text("Wood Type",
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 10))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(
-                        "Dimensions",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-                      ),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text("Dimensions",
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 10))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text("Rate/CFT", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text("Rate/CFT",
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 10))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(
-                        "Qty",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-                      ),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text("Qty",
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 10))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(
-                        "CFT",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-                      ),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text("CFT",
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 10))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(
-                        "Total",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-                      ),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text("Total",
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 10))),
                   ],
                 ),
-                // Data Rows
-                ...order.components.map((component) => pw.TableRow(
+                ...order.components
+                    .map((component) => pw.TableRow(
                   children: [
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(component.woodType, style: const pw.TextStyle(fontSize: 9)),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text(component.woodType,
+                            style:
+                            const pw.TextStyle(fontSize: 9))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(component.formattedSize, style: const pw.TextStyle(fontSize: 9)),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text(component.formattedSize,
+                            style:
+                            const pw.TextStyle(fontSize: 9))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(formatCurrency(component.ratePerCft), style: const pw.TextStyle(fontSize: 9)),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text(
+                            formatCurrency(component.ratePerCft),
+                            style:
+                            const pw.TextStyle(fontSize: 9))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(component.quantity.toString(), style: const pw.TextStyle(fontSize: 9)),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text(
+                            component.quantity.toString(),
+                            style:
+                            const pw.TextStyle(fontSize: 9))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(component.cft.toStringAsFixed(2), style: const pw.TextStyle(fontSize: 9)),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text(
+                            component.cft.toStringAsFixed(2),
+                            style:
+                            const pw.TextStyle(fontSize: 9))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(formatCurrency(component.totalCost), style: const pw.TextStyle(fontSize: 9)),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text(
+                            formatCurrency(component.totalCost),
+                            style:
+                            const pw.TextStyle(fontSize: 9))),
                   ],
-                )).toList(),
-                // Wood Subtotal Row
+                ))
+                    .toList(),
                 pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                  decoration:
+                  const pw.BoxDecoration(color: PdfColors.grey100),
                   children: [
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(
-                        "Wood Subtotal",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-                      ),
-                    ),
-                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("")),
-                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("")),
-                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("")),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text("Wood Subtotal",
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 10))),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(
-                        "${order.totalCft.toStringAsFixed(2)}",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-                      ),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text("")),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(
-                        formatCurrency(woodSubtotal),
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-                      ),
-                    ),
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text("")),
+                    pw.Padding(
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text("")),
+                    pw.Padding(
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text(
+                            "${order.totalCft.toStringAsFixed(2)}",
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 10))),
+                    pw.Padding(
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text(formatCurrency(woodSubtotal),
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 10))),
                   ],
                 ),
               ],
@@ -372,14 +379,13 @@ class PDFGenerator {
 
             pw.SizedBox(height: 30),
 
-            // Summary Section
+            // Cost Summary
             pw.Text(
               "Cost Summary",
               style: pw.TextStyle(
-                fontSize: 18,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.brown800,
-              ),
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.brown800),
             ),
             pw.SizedBox(height: 10),
 
@@ -396,127 +402,105 @@ class PDFGenerator {
                   1: const pw.FlexColumnWidth(2)
                 },
                 children: [
-                  _buildSummaryRow("Wood Components", woodSubtotal, formatCurrency),
-                  _buildSummaryRow("Labour Charges", order.labour, formatCurrency),
-                  _buildSummaryRow("Hardware Costs", order.hardware, formatCurrency),
-                  _buildSummaryRow("Factory Overheads", order.factory, formatCurrency),
-
-                  // Additional charges section
+                  _buildSummaryRow(
+                      "Wood Components", woodSubtotal, formatCurrency),
+                  _buildSummaryRow(
+                      "Labour Charges", order.labour, formatCurrency),
+                  _buildSummaryRow(
+                      "Hardware Costs", order.hardware, formatCurrency),
+                  _buildSummaryRow(
+                      "Factory Overheads", order.factory, formatCurrency),
                   if (order.additionalCharges.isNotEmpty) ...[
+                    pw.TableRow(children: [
+                      pw.Padding(
+                          padding:
+                          const pw.EdgeInsets.symmetric(vertical: 8),
+                          child: pw.Container(
+                              height: 1, color: PdfColors.grey400)),
+                      pw.Padding(
+                          padding:
+                          const pw.EdgeInsets.symmetric(vertical: 8),
+                          child: pw.Container(
+                              height: 1, color: PdfColors.grey400)),
+                    ]),
                     pw.TableRow(
+                      decoration: const pw.BoxDecoration(
+                          color: PdfColors.orange50),
                       children: [
                         pw.Padding(
-                          padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                          child: pw.Container(
-                            height: 1,
-                            color: PdfColors.grey400,
-                          ),
-                        ),
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Text("Other Charges",
+                                style: pw.TextStyle(
+                                    fontWeight: pw.FontWeight.bold,
+                                    fontSize: 12,
+                                    color: PdfColors.orange800))),
                         pw.Padding(
-                          padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                          child: pw.Container(
-                            height: 1,
-                            color: PdfColors.grey400,
-                          ),
-                        ),
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Text("")),
                       ],
                     ),
-                    pw.TableRow(
-                      decoration: const pw.BoxDecoration(color: PdfColors.orange50),
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text(
-                            "Other Charges",
-                            style: pw.TextStyle(
-                              fontWeight: pw.FontWeight.bold,
-                              fontSize: 12,
-                              color: PdfColors.orange800,
-                            ),
-                          ),
-                        ),
-                        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("")),
-                      ],
-                    ),
-                    // Individual additional charges
-                    ...order.additionalCharges.map((charge) => _buildSummaryRow(
-                      charge['name'] as String,
-                      charge['amount'] as double,
-                      formatCurrency,
-                    )).toList(),
-                    // Additional charges subtotal
+                    ...order.additionalCharges
+                        .map((charge) => _buildSummaryRow(
+                        charge['name'] as String,
+                        charge['amount'] as double,
+                        formatCurrency))
+                        .toList(),
                     _buildSummaryRow(
-                      "Additional Charges Total",
-                      order.additionalChargesTotal,
-                      formatCurrency,
-                      isBold: true,
-                      backgroundColor: PdfColors.orange100,
-                    ),
+                        "Additional Charges Total",
+                        order.additionalChargesTotal,
+                        formatCurrency,
+                        isBold: true,
+                        backgroundColor: PdfColors.orange100),
                   ],
-
+                  pw.TableRow(children: [
+                    pw.Padding(
+                        padding:
+                        const pw.EdgeInsets.symmetric(vertical: 8),
+                        child: pw.Container(
+                            height: 1, color: PdfColors.grey400)),
+                    pw.Padding(
+                        padding:
+                        const pw.EdgeInsets.symmetric(vertical: 8),
+                        child: pw.Container(
+                            height: 1, color: PdfColors.grey400)),
+                  ]),
+                  _buildSummaryRow("Subtotal Before Profit",
+                      subtotalBeforeProfit, formatCurrency,
+                      isBold: true),
+                  _buildSummaryRow(
+                      "Profit (${profitPercentage.toStringAsFixed(1)}%)",
+                      order.profit,
+                      formatCurrency),
+                  pw.TableRow(children: [
+                    pw.Padding(
+                        padding:
+                        const pw.EdgeInsets.symmetric(vertical: 8),
+                        child: pw.Container(
+                            height: 2, color: PdfColors.brown800)),
+                    pw.Padding(
+                        padding:
+                        const pw.EdgeInsets.symmetric(vertical: 8),
+                        child: pw.Container(
+                            height: 2, color: PdfColors.brown800)),
+                  ]),
                   pw.TableRow(
+                    decoration: const pw.BoxDecoration(
+                        color: PdfColors.brown50),
                     children: [
                       pw.Padding(
-                        padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                        child: pw.Container(
-                          height: 1,
-                          color: PdfColors.grey400,
-                        ),
-                      ),
+                          padding: const pw.EdgeInsets.all(12),
+                          child: pw.Text("TOTAL ESTIMATED COST",
+                              style: pw.TextStyle(
+                                  fontWeight: pw.FontWeight.bold,
+                                  fontSize: 16,
+                                  color: PdfColors.brown800))),
                       pw.Padding(
-                        padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                        child: pw.Container(
-                          height: 1,
-                          color: PdfColors.grey400,
-                        ),
-                      ),
-                    ],
-                  ),
-                  _buildSummaryRow("Subtotal Before Profit", subtotalBeforeProfit, formatCurrency, isBold: true),
-                  _buildSummaryRow("Profit (${profitPercentage.toStringAsFixed(1)}%)", order.profit, formatCurrency),
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                        child: pw.Container(
-                          height: 2,
-                          color: PdfColors.brown800,
-                        ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                        child: pw.Container(
-                          height: 2,
-                          color: PdfColors.brown800,
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: PdfColors.brown50),
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(12),
-                        child: pw.Text(
-                          "TOTAL ESTIMATED COST",
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 16,
-                            color: PdfColors.brown800,
-                          ),
-                        ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(12),
-                        child: pw.Text(
-                          formatCurrency(order.total),
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 16,
-                            color: PdfColors.green800,
-                          ),
-                        ),
-                      ),
+                          padding: const pw.EdgeInsets.all(12),
+                          child: pw.Text(formatCurrency(order.total),
+                              style: pw.TextStyle(
+                                  fontWeight: pw.FontWeight.bold,
+                                  fontSize: 16,
+                                  color: PdfColors.green800))),
                     ],
                   ),
                 ],
@@ -536,50 +520,29 @@ class PDFGenerator {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text(
-                    "Notes:",
-                    style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
+                  pw.Text("Notes:",
+                      style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold, fontSize: 12)),
                   pw.SizedBox(height: 5),
                   pw.Text(
-                    "• This is an estimated cost calculation for ${order.itemDescription}.",
-                    style: const pw.TextStyle(fontSize: 10),
-                  ),
+                      "• This is an estimated cost calculation for ${order.itemDescription}.",
+                      style: const pw.TextStyle(fontSize: 10)),
                   pw.Text(
-                    "• Actual costs may vary based on market conditions and specific requirements.",
-                    style: const pw.TextStyle(fontSize: 10),
-                  ),
-                  pw.Text(
-                    "• All prices are in Indian Rupees (₹).",
-                    style: const pw.TextStyle(fontSize: 10),
-                  ),
-                  if (order.additionalCharges.isNotEmpty) ...[
-                    pw.Text(
-                      "• Additional charges include custom fees and requirements.",
-                      style: const pw.TextStyle(fontSize: 10),
-                    ),
-                  ],
+                      "• Actual costs may vary based on market conditions.",
+                      style: const pw.TextStyle(fontSize: 10)),
+                  pw.Text("• All prices are in Indian Rupees (₹).",
+                      style: const pw.TextStyle(fontSize: 10)),
                   pw.SizedBox(height: 10),
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(
-                        "Generated by MacWoodRate App",
-                        style: pw.TextStyle(
-                          fontSize: 10,
-                          color: PdfColors.grey600,
-                        ),
-                      ),
-                      pw.Text(
-                        "Page 1 of 1",
-                        style: pw.TextStyle(
-                          fontSize: 10,
-                          color: PdfColors.grey600,
-                        ),
-                      ),
+                          "Generated by $companyName • WoodRate Pro",
+                          style: pw.TextStyle(
+                              fontSize: 10, color: PdfColors.grey600)),
+                      pw.Text("Powered by NishantCreation",
+                          style: pw.TextStyle(
+                              fontSize: 10, color: PdfColors.grey600)),
                     ],
                   ),
                 ],
@@ -593,7 +556,6 @@ class PDFGenerator {
     return pdf;
   }
 
-  // Helper method to build summary rows
   static pw.TableRow _buildSummaryRow(
       String label,
       double amount,
@@ -602,27 +564,25 @@ class PDFGenerator {
         PdfColor? backgroundColor,
       }) {
     return pw.TableRow(
-      decoration: backgroundColor != null ? pw.BoxDecoration(color: backgroundColor) : null,
+      decoration: backgroundColor != null
+          ? pw.BoxDecoration(color: backgroundColor)
+          : null,
       children: [
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(vertical: 6),
-          child: pw.Text(
-            label,
-            style: pw.TextStyle(
-              fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
-              fontSize: isBold ? 14 : 12,
-            ),
-          ),
+          child: pw.Text(label,
+              style: pw.TextStyle(
+                  fontWeight:
+                  isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+                  fontSize: isBold ? 14 : 12)),
         ),
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(vertical: 6),
-          child: pw.Text(
-            formatCurrency(amount),
-            style: pw.TextStyle(
-              fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
-              fontSize: isBold ? 14 : 12,
-            ),
-          ),
+          child: pw.Text(formatCurrency(amount),
+              style: pw.TextStyle(
+                  fontWeight:
+                  isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+                  fontSize: isBold ? 14 : 12)),
         ),
       ],
     );

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'menu_screen.dart';
+import '../utils/company_profile.dart';
+import 'setup_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -8,10 +10,12 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  String _companyName = 'WoodRate Pro';
 
   @override
   void initState() {
@@ -39,22 +43,34 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     ));
 
     _animationController.forward();
+    _initApp();
+  }
 
-    // Navigate to menu screen after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const MenuScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
-            transitionDuration: const Duration(milliseconds: 500),
-          ),
-        );
-      }
-    });
+  Future<void> _initApp() async {
+    final name = await CompanyProfile.getCompanyName();
+    if (mounted) {
+      setState(() {
+        _companyName = name ?? 'WoodRate Pro';
+      });
+    }
+
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+
+    final hasProfile = await CompanyProfile.hasProfile();
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+        hasProfile ? const MenuScreen() : const SetupScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+    );
   }
 
   @override
@@ -78,7 +94,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Company Logo/Icon
                     Container(
                       width: 120,
                       height: 120,
@@ -102,38 +117,48 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
                     const SizedBox(height: 30),
 
-                    // Company Name
-                    const Text(
-                      'NJ Creations',
-                      style: TextStyle(
+                    Text(
+                      _companyName,
+                      style: const TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                         letterSpacing: 2.0,
                       ),
+                      textAlign: TextAlign.center,
                     ),
 
                     const SizedBox(height: 10),
 
-                    // Tagline
+                    Text(
+                      'Powered by WoodRate Pro',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.brown[200],
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
                     Text(
                       'Wood Cost Calculator',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.brown[200],
+                        color: Colors.brown[300],
                         letterSpacing: 1.0,
                       ),
                     ),
 
                     const SizedBox(height: 50),
 
-                    // Loading indicator
                     SizedBox(
                       width: 30,
                       height: 30,
                       child: CircularProgressIndicator(
                         strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.brown[200]!),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.brown[200]!),
                       ),
                     ),
                   ],

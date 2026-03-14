@@ -1,23 +1,45 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'cft_calculator_screen.dart';
+import 'settings_screen.dart';
+import '../utils/company_profile.dart';
 
-class MenuScreen extends StatelessWidget {
+class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
 
   @override
+  State<MenuScreen> createState() => _MenuScreenState();
+}
+
+class _MenuScreenState extends State<MenuScreen> {
+  String _companyName = 'WoodRate Pro';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompanyName();
+  }
+
+  Future<void> _loadCompanyName() async {
+    final name = await CompanyProfile.getCompanyName();
+    if (mounted) {
+      setState(() {
+        _companyName = name ?? 'WoodRate Pro';
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Get screen dimensions
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 600;
-    final isTablet = screenSize.width >= 600 && screenSize.width < 1200;
 
     return Scaffold(
       backgroundColor: Colors.brown[50],
       appBar: AppBar(
         title: FittedBox(
           child: Text(
-            'NJ Creations',
+            _companyName,
             style: TextStyle(
               fontSize: isSmallScreen ? 18 : 20,
             ),
@@ -27,6 +49,22 @@ class MenuScreen extends StatelessWidget {
         foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () async {
+              final updated = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const SettingsScreen()),
+              );
+              if (updated == true) {
+                _loadCompanyName();
+              }
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -59,12 +97,13 @@ class MenuScreen extends StatelessWidget {
                     ),
                     SizedBox(height: isSmallScreen ? 12 : 16),
                     Text(
-                      'Wood Calculator',
+                      _companyName,
                       style: TextStyle(
                         fontSize: isSmallScreen ? 20 : 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.brown[800],
                       ),
+                      textAlign: TextAlign.center,
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 8),
                     Text(
@@ -85,12 +124,12 @@ class MenuScreen extends StatelessWidget {
                 child: isSmallScreen
                     ? Column(
                   children: [
-                    // Stacked layout for small screens
                     Expanded(
                       child: _buildCalculatorCard(
                         context,
                         title: 'CFT Calculator',
-                        subtitle: 'Calculate wood volume in CFT\nBulk quantity calculations',
+                        subtitle:
+                        'Calculate wood volume in CFT\nBulk quantity calculations',
                         icon: Icons.calculate,
                         color: Colors.blue[700]!,
                         isSmallScreen: isSmallScreen,
@@ -98,7 +137,8 @@ class MenuScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const CftCalculatorScreen(),
+                              builder: (context) =>
+                              const CftCalculatorScreen(),
                             ),
                           );
                         },
@@ -109,7 +149,8 @@ class MenuScreen extends StatelessWidget {
                       child: _buildCalculatorCard(
                         context,
                         title: 'Rate Finder',
-                        subtitle: 'Complete cost calculation\nWith materials, labor & profits',
+                        subtitle:
+                        'Complete cost calculation\nWith materials, labor & profits',
                         icon: Icons.monetization_on,
                         color: Colors.green[700]!,
                         isSmallScreen: isSmallScreen,
@@ -127,7 +168,6 @@ class MenuScreen extends StatelessWidget {
                 )
                     : Column(
                   children: [
-                    // Side by side layout for larger screens
                     Expanded(
                       child: Row(
                         children: [
@@ -135,7 +175,8 @@ class MenuScreen extends StatelessWidget {
                             child: _buildCalculatorCard(
                               context,
                               title: 'CFT Calculator',
-                              subtitle: 'Calculate wood volume in CFT\nBulk quantity calculations',
+                              subtitle:
+                              'Calculate wood volume in CFT\nBulk quantity calculations',
                               icon: Icons.calculate,
                               color: Colors.blue[700]!,
                               isSmallScreen: isSmallScreen,
@@ -143,7 +184,8 @@ class MenuScreen extends StatelessWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const CftCalculatorScreen(),
+                                    builder: (context) =>
+                                    const CftCalculatorScreen(),
                                   ),
                                 );
                               },
@@ -154,7 +196,8 @@ class MenuScreen extends StatelessWidget {
                             child: _buildCalculatorCard(
                               context,
                               title: 'Rate Finder',
-                              subtitle: 'Complete cost calculation\nWith materials, labor & profits',
+                              subtitle:
+                              'Complete cost calculation\nWith materials, labor & profits',
                               icon: Icons.monetization_on,
                               color: Colors.green[700]!,
                               isSmallScreen: isSmallScreen,
@@ -162,7 +205,8 @@ class MenuScreen extends StatelessWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const HomeScreen(),
+                                    builder: (context) =>
+                                    const HomeScreen(),
                                   ),
                                 );
                               },
@@ -179,7 +223,7 @@ class MenuScreen extends StatelessWidget {
               Container(
                 padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                 child: Text(
-                  'NJ Creations Wood Calculator v1.0',
+                  'WoodRate Pro • by NishantCreation',
                   style: TextStyle(
                     color: Colors.brown[400],
                     fontSize: isSmallScreen ? 10 : 12,
