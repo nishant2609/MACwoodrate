@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import 'menu_screen.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/company_profile.dart';
+import 'menu_screen.dart';
 import 'setup_screen.dart';
+import 'auth/login_screen.dart';
+import 'auth/company_registration_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -47,6 +51,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initApp() async {
+    // Load company name for splash display
     final name = await CompanyProfile.getCompanyName();
     if (mounted) {
       setState(() {
@@ -54,17 +59,33 @@ class _SplashScreenState extends State<SplashScreen>
       });
     }
 
+    // Wait for animation
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
-    final hasProfile = await CompanyProfile.hasProfile();
-    if (!mounted) return;
+    // Check auth state
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
+    if (authProvider.isAuthenticated) {
+      // User is logged in
+      if (authProvider.hasCompany) {
+        // Has company — go to menu
+        _navigateTo(const MenuScreen());
+      } else {
+        // No company — go to company registration
+        _navigateTo(const CompanyRegistrationScreen());
+      }
+    } else {
+      // Not logged in — go to login
+      _navigateTo(const LoginScreen());
+    }
+  }
+
+  void _navigateTo(Widget screen) {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-        hasProfile ? const MenuScreen() : const SetupScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) => screen,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
