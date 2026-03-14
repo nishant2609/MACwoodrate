@@ -249,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: FittedBox(
           child: Text(
-            isSmallScreen ? 'Rate Finder' : 'Dining Table Rate Finder',
+            'Wood Cost Estimator',
             style: TextStyle(fontSize: isSmallScreen ? 18 : 20),
           ),
         ),
