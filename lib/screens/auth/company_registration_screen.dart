@@ -1,45 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import '../services/company_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/company_service.dart';
+import '../menu_screen.dart';
 
-class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+class CompanyRegistrationScreen extends StatefulWidget {
+  const CompanyRegistrationScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  State<CompanyRegistrationScreen> createState() =>
+      _CompanyRegistrationScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _CompanyRegistrationScreenState
+    extends State<CompanyRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _companyNameController = TextEditingController();
-  final TextEditingController _ownerNameController = TextEditingController();
+  final TextEditingController _companyNameController =
+  TextEditingController();
+  final TextEditingController _ownerNameController =
+  TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _gstinController = TextEditingController();
   final TextEditingController _websiteController = TextEditingController();
   bool _isSaving = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadCompanyData();
-  }
-
-  void _loadCompanyData() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final company = authProvider.currentCompany;
-    if (company != null) {
-      _companyNameController.text = company.companyName;
-      _ownerNameController.text = company.ownerName;
-      _phoneController.text = company.phone;
-      _addressController.text = company.address;
-      _gstinController.text = company.gstin ?? '';
-      _websiteController.text = company.website ?? '';
-    }
-  }
-
-  Future<void> _save() async {
+  Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
@@ -47,45 +33,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final companyService = CompanyService();
 
-    if (authProvider.currentCompany != null) {
-      final result = await companyService.updateCompany(
-        companyId: authProvider.currentCompany!.id,
-        companyName: _companyNameController.text.trim(),
-        ownerName: _ownerNameController.text.trim(),
-        phone: _phoneController.text.trim(),
-        address: _addressController.text.trim(),
-        gstin: _gstinController.text.trim().isEmpty
-            ? null
-            : _gstinController.text.trim(),
-        website: _websiteController.text.trim().isEmpty
-            ? null
-            : _websiteController.text.trim(),
+    final result = await companyService.createCompany(
+      companyName: _companyNameController.text.trim(),
+      ownerName: _ownerNameController.text.trim(),
+      email: authProvider.currentUser?.email ?? '',
+      phone: _phoneController.text.trim(),
+      address: _addressController.text.trim(),
+      gstin: _gstinController.text.trim().isEmpty
+          ? null
+          : _gstinController.text.trim(),
+      website: _websiteController.text.trim().isEmpty
+          ? null
+          : _websiteController.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    if (result['success']) {
+      // Update user with company ID
+      await authProvider.setCurrentCompany(
+        await companyService.getCompany(result['companyId'])
+            .then((c) => c!),
       );
 
       if (!mounted) return;
 
-      if (result['success']) {
-        // Refresh company data in provider
-        await authProvider.refreshCompanyData();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Company profile updated successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MenuScreen()),
+      );
+    } else {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-
-    setState(() => _isSaving = false);
   }
 
   @override
@@ -97,9 +82,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: Colors.brown[50],
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: const Text('Company Registration'),
         backgroundColor: Colors.brown,
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await authProvider.signOut();
+            },
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -109,81 +106,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // User Info Card
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
+                // Header
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                  decoration: BoxDecoration(
+                    color: Colors.brown,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Padding(
-                    padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Colors.brown,
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: 35,
-                          ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.business,
+                        size: 50,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Register Your Company',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                authProvider.currentUser?.name ?? 'User',
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 16 : 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.brown[800],
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                authProvider.currentUser?.email ?? '',
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 13 : 14,
-                                  color: Colors.brown[600],
-                                ),
-                              ),
-                            ],
-                          ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Your details will appear on all PDFs and reports',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.brown[100],
                         ),
-                      ],
-                    ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
 
                 SizedBox(height: isSmallScreen ? 20 : 24),
 
-                Text(
-                  'Company Profile',
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 18 : 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.brown[800],
-                  ),
-                ),
-
-                SizedBox(height: isSmallScreen ? 4 : 6),
-
-                Text(
-                  'This information appears on all your PDFs and reports.',
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 13 : 14,
-                    color: Colors.brown[600],
-                  ),
-                ),
-
-                SizedBox(height: isSmallScreen ? 16 : 20),
-
+                // Form Card
                 Card(
                   elevation: 4,
                   shape: RoundedRectangleBorder(
@@ -192,7 +154,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Padding(
                     padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text(
+                          'Company Details',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 16 : 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.brown[800],
+                          ),
+                        ),
+
+                        SizedBox(height: isSmallScreen ? 16 : 20),
+
                         // Company Name
                         TextFormField(
                           controller: _companyNameController,
@@ -203,6 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
+                            hintText: 'e.g., Sharma Wood Works',
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -250,6 +225,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             if (value == null || value.trim().isEmpty) {
                               return 'Please enter phone number';
                             }
+                            if (value.trim().length < 10) {
+                              return 'Please enter valid phone number';
+                            }
                             return null;
                           },
                         ),
@@ -266,6 +244,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
+                            hintText:
+                            'Street, City, State, PIN Code',
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -280,7 +260,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         // GSTIN
                         TextFormField(
                           controller: _gstinController,
-                          textCapitalization: TextCapitalization.characters,
+                          textCapitalization:
+                          TextCapitalization.characters,
                           decoration: InputDecoration(
                             labelText: 'GSTIN (Optional)',
                             prefixIcon: const Icon(Icons.receipt),
@@ -317,11 +298,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                         SizedBox(height: isSmallScreen ? 20 : 24),
 
-                        // Save Button
+                        // Register Button
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _isSaving ? null : _save,
+                            onPressed: _isSaving ? null : _handleRegister,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.brown,
                               foregroundColor: Colors.white,
@@ -338,11 +319,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                valueColor:
+                                AlwaysStoppedAnimation<Color>(
+                                    Colors.white),
                               ),
                             )
                                 : const Text(
-                              'Save Changes',
+                              'Register Company',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -355,11 +338,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
 
-                SizedBox(height: isSmallScreen ? 32 : 40),
+                SizedBox(height: isSmallScreen ? 16 : 20),
 
                 Center(
                   child: Text(
-                    'WoodRate Pro v1.0.0 • by NishantCreation',
+                    'WoodRate Pro • by NishantCreation',
                     style: TextStyle(
                       color: Colors.brown[400],
                       fontSize: isSmallScreen ? 11 : 12,
