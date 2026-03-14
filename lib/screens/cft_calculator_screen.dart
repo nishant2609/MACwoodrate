@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../models/wood_component.dart';
 import '../widgets/wood_input_tile.dart';
@@ -9,12 +8,14 @@ class CftCalculatorScreen extends StatefulWidget {
   const CftCalculatorScreen({super.key});
 
   @override
-  State<CftCalculatorScreen> createState() => _CftCalculatorScreenState();
+  State<CftCalculatorScreen> createState() =>
+      _CftCalculatorScreenState();
 }
 
 class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
   List<WoodComponent> woodComponents = [];
-  final TextEditingController reportTitleController = TextEditingController();
+  final TextEditingController reportTitleController =
+  TextEditingController();
 
   void addWoodComponent(WoodComponent component) {
     setState(() {
@@ -29,7 +30,8 @@ class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
   }
 
   double get totalCft {
-    return woodComponents.fold<double>(0, (sum, item) => sum + item.cft);
+    return woodComponents.fold<double>(
+        0, (sum, item) => sum + item.cft);
   }
 
   void _clearAll() {
@@ -39,68 +41,57 @@ class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
     });
   }
 
+  String get _reportTitle =>
+      reportTitleController.text.isEmpty
+          ? 'CFT Calculation Report'
+          : reportTitleController.text;
+
   Future<void> _generatePDF() async {
     if (woodComponents.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please add at least one wood component'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showEmptyError();
       return;
     }
 
-    // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text("Generating CFT Report..."),
-            ],
-          ),
-        );
-      },
-    );
+    _showLoading('Saving to Downloads...');
 
     try {
-      // Generate PDF
       final pdfFile = await CftPdfGenerator.generate(
         components: woodComponents,
-        reportTitle: reportTitleController.text.isEmpty
-            ? 'CFT Calculation Report'
-            : reportTitleController.text,
+        reportTitle: _reportTitle,
+        context: context,
       );
 
-      // Close loading dialog
+      if (!mounted) return;
       Navigator.of(context).pop();
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('CFT Report saved successfully!\nLocation: ${pdfFile.path}'),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                    'CFT Report saved to Downloads!\n${pdfFile.path}'),
+              ),
+            ],
+          ),
           backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: 'OK',
+            textColor: Colors.white,
             onPressed: () {},
           ),
         ),
       );
     } catch (e) {
-      // Close loading dialog
+      if (!mounted) return;
       Navigator.of(context).pop();
-
-      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error generating CFT report: $e'),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -108,62 +99,92 @@ class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
 
   Future<void> _printPDF() async {
     if (woodComponents.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please add at least one wood component'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showEmptyError();
       return;
     }
 
-    // Show loading dialog
+    _showLoading('Preparing for print...');
+
+    try {
+      final pdfBytes = await CftPdfGenerator.generateBytes(
+        components: woodComponents,
+        reportTitle: _reportTitle,
+        context: context,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      await Printing.layoutPdf(
+        onLayout: (format) async => pdfBytes,
+        name: 'WoodRatePro_CFT_${DateTime.now().millisecondsSinceEpoch}',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error preparing print: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _sharePDF() async {
+    if (woodComponents.isEmpty) {
+      _showEmptyError();
+      return;
+    }
+
+    _showLoading('Preparing to share...');
+
+    try {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      await CftPdfGenerator.shareCftReport(
+        components: woodComponents,
+        reportTitle: _reportTitle,
+        context: context,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error sharing: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showEmptyError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please add at least one wood component'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showLoading(String message) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return const AlertDialog(
+        return AlertDialog(
           content: Row(
             children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text("Preparing CFT report for print..."),
+              const CircularProgressIndicator(),
+              const SizedBox(width: 20),
+              Text(message),
             ],
           ),
         );
       },
     );
-
-    try {
-      // Generate PDF bytes for printing
-      final pdfBytes = await CftPdfGenerator.generateBytes(
-        components: woodComponents,
-        reportTitle: reportTitleController.text.isEmpty
-            ? 'CFT Calculation Report'
-            : reportTitleController.text,
-      );
-
-      // Close loading dialog
-      Navigator.of(context).pop();
-
-      // Open print dialog
-      await Printing.layoutPdf(
-        onLayout: (format) async => pdfBytes,
-        name: 'CFT_Report_${DateTime.now().millisecondsSinceEpoch}',
-      );
-    } catch (e) {
-      // Close loading dialog
-      Navigator.of(context).pop();
-
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error preparing CFT report for print: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    }
   }
 
   @override
@@ -175,12 +196,17 @@ class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: _sharePDF,
+            tooltip: 'Share CFT Report',
+          ),
+          IconButton(
             icon: const Icon(Icons.print),
             onPressed: _printPDF,
             tooltip: 'Print CFT Report',
           ),
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
+            icon: const Icon(Icons.download),
             onPressed: _generatePDF,
             tooltip: 'Save CFT Report',
           ),
@@ -191,7 +217,7 @@ class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Report Title Section
+            // Report Title
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -212,7 +238,8 @@ class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
                         labelText: 'Report Title (Optional)',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.title),
-                        hintText: 'e.g., Wood Stock Calculation, Project XYZ CFT',
+                        hintText:
+                        'e.g., Wood Stock Calculation, Project XYZ',
                       ),
                     ),
                   ],
@@ -222,22 +249,24 @@ class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
 
             const SizedBox(height: 20),
 
-            // Wood Input Section
+            // Wood Input
             WoodInputTile(onAddComponent: addWoodComponent),
 
             const SizedBox(height: 20),
 
-            // CFT Summary Card
+            // CFT Summary
             Card(
               color: Colors.blue[50],
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.calculate, color: Colors.blue, size: 28),
+                        Icon(Icons.calculate,
+                            color: Colors.blue, size: 28),
                         SizedBox(width: 12),
                         Text(
                           'Total CFT:',
@@ -264,16 +293,17 @@ class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
 
             const SizedBox(height: 20),
 
-            // Added Components Section
             if (woodComponents.isNotEmpty) ...[
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                    CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
                             'Wood Components',
@@ -284,40 +314,53 @@ class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
                           ),
                           TextButton.icon(
                             onPressed: _clearAll,
-                            icon: const Icon(Icons.clear_all, color: Colors.red),
-                            label: const Text('Clear All', style: TextStyle(color: Colors.red)),
+                            icon: const Icon(Icons.clear_all,
+                                color: Colors.red),
+                            label: const Text('Clear All',
+                                style: TextStyle(
+                                    color: Colors.red)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
-                      ...woodComponents.asMap().entries.map((entry) {
+                      ...woodComponents
+                          .asMap()
+                          .entries
+                          .map((entry) {
                         int index = entry.key;
                         WoodComponent component = entry.value;
                         return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
+                          margin: const EdgeInsets.only(
+                              bottom: 8),
                           color: Colors.grey[50],
                           child: ListTile(
-                            title: Text('${component.woodType} - ${component.formattedSize}'),
+                            title: Text(
+                                '${component.woodType} - ${component.formattedSize}'),
                             subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment:
+                              CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Quantity: ${component.quantity} pieces',
-                                  style: const TextStyle(fontSize: 12),
+                                  'Qty: ${component.quantity} pcs',
+                                  style: const TextStyle(
+                                      fontSize: 12),
                                 ),
                                 Text(
                                   'CFT: ${component.cft.toStringAsFixed(2)}',
                                   style: const TextStyle(
                                     color: Colors.blue,
                                     fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight:
+                                    FontWeight.bold,
                                   ),
                                 ),
                               ],
                             ),
                             trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => removeWoodComponent(index),
+                              icon: const Icon(Icons.delete,
+                                  color: Colors.red),
+                              onPressed: () =>
+                                  removeWoodComponent(index),
                             ),
                           ),
                         );
@@ -327,50 +370,62 @@ class _CftCalculatorScreenState extends State<CftCalculatorScreen> {
                 ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
               // Action Buttons
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _printPDF,
-                      icon: const Icon(Icons.print),
-                      label: const Text('Print Report'),
+                      onPressed: _sharePDF,
+                      icon: const Icon(Icons.share),
+                      label: const Text('Share'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[700],
+                        backgroundColor: Colors.green[700],
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _printPDF,
+                      icon: const Icon(Icons.print),
+                      label: const Text('Print'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[700],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _generatePDF,
-                      icon: const Icon(Icons.picture_as_pdf),
-                      label: const Text('Save PDF'),
+                      icon: const Icon(Icons.download),
+                      label: const Text('Save'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red[700],
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12),
                       ),
                     ),
                   ),
                 ],
               ),
             ] else ...[
-              // Empty State
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(40),
                 child: Column(
                   children: [
-                    Icon(
-                      Icons.forest,
-                      size: 80,
-                      color: Colors.grey[400],
-                    ),
+                    Icon(Icons.forest,
+                        size: 80, color: Colors.grey[400]),
                     const SizedBox(height: 16),
                     Text(
                       'No wood components added yet',

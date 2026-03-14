@@ -14,7 +14,6 @@ class ResultScreen extends StatelessWidget {
   });
 
   Future<void> _generatePDF(BuildContext context) async {
-    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -24,7 +23,7 @@ class ResultScreen extends StatelessWidget {
             children: [
               CircularProgressIndicator(),
               SizedBox(width: 20),
-              Text("Generating PDF..."),
+              Text("Saving to Downloads..."),
             ],
           ),
         );
@@ -32,41 +31,45 @@ class ResultScreen extends StatelessWidget {
     );
 
     try {
-      // Generate PDF
-      final pdfFile = await PDFGenerator.generate(order);
-
-      // Close loading dialog
+      final pdfFile =
+      await PDFGenerator.generate(order, context: context);
+      if (!context.mounted) return;
       Navigator.of(context).pop();
 
-      // Show success message with file path
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('PDF saved successfully!\nLocation: ${pdfFile.path}'),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                    'PDF saved to Downloads!\n${pdfFile.path}'),
+              ),
+            ],
+          ),
           backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: 'OK',
+            textColor: Colors.white,
             onPressed: () {},
           ),
         ),
       );
     } catch (e) {
-      // Close loading dialog
+      if (!context.mounted) return;
       Navigator.of(context).pop();
-
-      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error generating PDF: $e'),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
         ),
       );
     }
   }
 
   Future<void> _printPDF(BuildContext context) async {
-    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -84,27 +87,55 @@ class ResultScreen extends StatelessWidget {
     );
 
     try {
-      // Generate PDF bytes for printing
-      final pdfBytes = await PDFGenerator.generateBytes(order);
-
-      // Close loading dialog
+      final pdfBytes =
+      await PDFGenerator.generateBytes(order, context: context);
+      if (!context.mounted) return;
       Navigator.of(context).pop();
 
-      // Open print dialog
       await Printing.layoutPdf(
         onLayout: (format) async => pdfBytes,
-        name: 'Order_${order.orderId}',
+        name: 'WoodRatePro_${order.orderId}',
       );
     } catch (e) {
-      // Close loading dialog
+      if (!context.mounted) return;
       Navigator.of(context).pop();
-
-      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error preparing print: $e'),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  Future<void> _sharePDF(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text("Preparing to share..."),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      await PDFGenerator.shareOrder(order, context: context);
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error sharing PDF: $e'),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -121,6 +152,11 @@ class ResultScreen extends StatelessWidget {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () => _sharePDF(context),
+            tooltip: 'Share PDF',
+          ),
+          IconButton(
             icon: const Icon(Icons.print),
             onPressed: () => _printPDF(context),
             tooltip: 'Print',
@@ -128,7 +164,7 @@ class ResultScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.picture_as_pdf),
             onPressed: () => _generatePDF(context),
-            tooltip: 'Generate PDF',
+            tooltip: 'Save PDF',
           ),
         ],
       ),
@@ -145,7 +181,8 @@ class ResultScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'Order Details',
@@ -155,10 +192,12 @@ class ResultScreen extends StatelessWidget {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.green,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius:
+                            BorderRadius.circular(20),
                           ),
                           child: const Text(
                             'SAVED',
@@ -174,7 +213,8 @@ class ResultScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        const Icon(Icons.numbers, color: Colors.brown),
+                        const Icon(Icons.numbers,
+                            color: Colors.brown),
                         const SizedBox(width: 8),
                         Text(
                           'Order ID: ${order.orderId}',
@@ -188,7 +228,8 @@ class ResultScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.description, color: Colors.brown),
+                        const Icon(Icons.description,
+                            color: Colors.brown),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -205,7 +246,8 @@ class ResultScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.access_time, color: Colors.brown),
+                        const Icon(Icons.access_time,
+                            color: Colors.brown),
                         const SizedBox(width: 8),
                         Text(
                           'Date: ${dateFormat.format(order.date)}',
@@ -214,7 +256,7 @@ class ResultScreen extends StatelessWidget {
                       ],
                     ),
 
-                    // Item Image Section
+                    // Item Image
                     if (order.itemImagePath != null) ...[
                       const SizedBox(height: 16),
                       const Text(
@@ -227,24 +269,32 @@ class ResultScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       GestureDetector(
                         onTap: () {
-                          // Show full screen image
                           showDialog(
                             context: context,
                             builder: (context) => Dialog(
                               child: Container(
                                 constraints: BoxConstraints(
-                                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                                  maxHeight:
+                                  MediaQuery.of(context)
+                                      .size
+                                      .height *
+                                      0.8,
                                 ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     AppBar(
-                                      title: const Text('Item Photo'),
-                                      automaticallyImplyLeading: false,
+                                      title: const Text(
+                                          'Item Photo'),
+                                      automaticallyImplyLeading:
+                                      false,
                                       actions: [
                                         IconButton(
-                                          icon: const Icon(Icons.close),
-                                          onPressed: () => Navigator.pop(context),
+                                          icon: const Icon(
+                                              Icons.close),
+                                          onPressed: () =>
+                                              Navigator.pop(
+                                                  context),
                                         ),
                                       ],
                                     ),
@@ -264,23 +314,34 @@ class ResultScreen extends StatelessWidget {
                           height: 200,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius:
+                            BorderRadius.circular(8),
+                            border: Border.all(
+                                color: Colors.grey[300]!),
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius:
+                            BorderRadius.circular(8),
                             child: Image.file(
                               File(order.itemImagePath!),
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
+                              errorBuilder:
+                                  (context, error, stackTrace) {
                                 return Container(
                                   color: Colors.grey[200],
                                   child: const Center(
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                      MainAxisAlignment
+                                          .center,
                                       children: [
-                                        Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                                        Text('Image not found', style: TextStyle(color: Colors.grey)),
+                                        Icon(Icons.broken_image,
+                                            size: 50,
+                                            color: Colors.grey),
+                                        Text('Image not found',
+                                            style: TextStyle(
+                                                color:
+                                                Colors.grey)),
                                       ],
                                     ),
                                   ),
@@ -298,7 +359,7 @@ class ResultScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Wood Components Section
+            // Wood Components
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -319,24 +380,30 @@ class ResultScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    ...order.components.map((component) => Container(
-                      margin: const EdgeInsets.only(bottom: 8),
+                    ...order.components
+                        .map((component) => Container(
+                      margin:
+                      const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius:
+                        BorderRadius.circular(8),
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment:
+                              CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   '${component.woodType} (${component.formattedSize})',
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight:
+                                    FontWeight.w600,
                                   ),
                                 ),
                                 Text(
@@ -351,7 +418,8 @@ class ResultScreen extends StatelessWidget {
                                   style: const TextStyle(
                                     color: Colors.blue,
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight:
+                                    FontWeight.w600,
                                   ),
                                 ),
                               ],
@@ -366,10 +434,12 @@ class ResultScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                    )).toList(),
+                    ))
+                        .toList(),
                     const Divider(thickness: 2),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'Wood Subtotal:',
@@ -390,7 +460,8 @@ class ResultScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'Total CFT:',
@@ -416,7 +487,7 @@ class ResultScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Additional Costs Section
+            // Additional Costs
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -425,7 +496,8 @@ class ResultScreen extends StatelessWidget {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.attach_money, color: Colors.brown),
+                        Icon(Icons.attach_money,
+                            color: Colors.brown),
                         SizedBox(width: 8),
                         Text(
                           'Additional Costs',
@@ -437,11 +509,12 @@ class ResultScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _buildCostRow('Labour', order.labour, Icons.build),
-                    _buildCostRow('Hardware', order.hardware, Icons.hardware),
-                    _buildCostRow('Factory Charges', order.factory, Icons.factory),
-
-                    // Additional charges section
+                    _buildCostRow(
+                        'Labour', order.labour, Icons.build),
+                    _buildCostRow(
+                        'Hardware', order.hardware, Icons.hardware),
+                    _buildCostRow('Factory Charges', order.factory,
+                        Icons.factory),
                     if (order.additionalCharges.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       const Divider(),
@@ -455,23 +528,24 @@ class ResultScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...order.additionalCharges.map((charge) => _buildCostRow(
+                      ...order.additionalCharges
+                          .map((charge) => _buildCostRow(
                         charge['name'] as String,
                         charge['amount'] as double,
                         Icons.payment,
-                      )).toList(),
+                      ))
+                          .toList(),
                       const SizedBox(height: 8),
                       _buildCostRow(
-                        'Additional Charges Total',
+                        'Additional Total',
                         order.additionalChargesTotal,
                         Icons.calculate,
                         isHighlighted: true,
                       ),
-                      const SizedBox(height: 8),
                     ],
-
                     const Divider(),
-                    _buildCostRow('Profit', order.profit, Icons.trending_up),
+                    _buildCostRow(
+                        'Profit', order.profit, Icons.trending_up),
                   ],
                 ),
               ),
@@ -479,17 +553,19 @@ class ResultScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Total Section
+            // Total
             Card(
               color: Colors.brown[50],
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.summarize, color: Colors.brown, size: 28),
+                        Icon(Icons.summarize,
+                            color: Colors.brown, size: 28),
                         SizedBox(width: 12),
                         Text(
                           'Total Cost:',
@@ -514,48 +590,85 @@ class ResultScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
 
             // Action Buttons
-            Row(
+            // Action Buttons
+            Column(
               children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _printPDF(context),
-                    icon: const Icon(Icons.print),
-                    label: const Text('Print'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[700],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _sharePDF(context),
+                        icon: const Icon(Icons.share, size: 18),
+                        label: const Text('Share via WhatsApp'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _generatePDF(context),
-                    icon: const Icon(Icons.picture_as_pdf),
-                    label: const Text('Save PDF'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red[700],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _printPDF(context),
+                        icon: const Icon(Icons.print, size: 18),
+                        label: const Text('Print'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[700],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-                    icon: const Icon(Icons.home),
-                    label: const Text('New Order'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _generatePDF(context),
+                        icon: const Icon(Icons.download, size: 18),
+                        label: const Text('Save to Downloads'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.brown,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // New Order Button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context)
+                    .popUntil((route) => route.isFirst),
+                icon: const Icon(Icons.home),
+                label: const Text('Back to Home'),
+                style: OutlinedButton.styleFrom(
+                  padding:
+                  const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
             ),
           ],
         ),
@@ -563,11 +676,13 @@ class ResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCostRow(String label, double amount, IconData icon, {bool isHighlighted = false}) {
+  Widget _buildCostRow(String label, double amount, IconData icon,
+      {bool isHighlighted = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Container(
-        padding: isHighlighted ? const EdgeInsets.all(8) : EdgeInsets.zero,
+        padding:
+        isHighlighted ? const EdgeInsets.all(8) : EdgeInsets.zero,
         decoration: isHighlighted
             ? BoxDecoration(
           color: Colors.orange[50],
@@ -577,19 +692,22 @@ class ResultScreen extends StatelessWidget {
             : null,
         child: Row(
           children: [
-            Icon(
-                icon,
+            Icon(icon,
                 size: 16,
-                color: isHighlighted ? Colors.orange[700] : Colors.grey[600]
-            ),
+                color: isHighlighted
+                    ? Colors.orange[700]
+                    : Colors.grey[600]),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 '$label:',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
-                  color: isHighlighted ? Colors.orange[800] : null,
+                  fontWeight: isHighlighted
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                  color:
+                  isHighlighted ? Colors.orange[800] : null,
                 ),
               ),
             ),
@@ -598,7 +716,8 @@ class ResultScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: isHighlighted ? Colors.orange[800] : null,
+                color:
+                isHighlighted ? Colors.orange[800] : null,
               ),
             ),
           ],
