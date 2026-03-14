@@ -95,8 +95,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text('Logout'),
-                  content: const Text(
-                      'Are you sure you want to logout?'),
+                  content: const Text('Are you sure you want to logout?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
@@ -283,8 +282,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                        const CftCalculatorScreen(),
+                        builder: (context) => const CftCalculatorScreen(),
                       ),
                     );
                   },
@@ -355,7 +353,7 @@ class _MenuScreenState extends State<MenuScreen> {
     required bool isSmallScreen,
   }) {
     return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+      padding: EdgeInsets.all(isSmallScreen ? 10 : 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -371,28 +369,36 @@ class _MenuScreenState extends State<MenuScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 16 : 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.brown[800],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 15 : 17,
+                fontWeight: FontWeight.bold,
+                color: Colors.brown[800],
+              ),
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 10 : 11,
-              color: Colors.grey[600],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 9 : 10,
+                color: Colors.grey[600],
+              ),
             ),
           ),
         ],
@@ -553,6 +559,14 @@ class _MenuScreenState extends State<MenuScreen> {
                   style: TextStyle(
                     fontSize: isSmallScreen ? 11 : 12,
                     color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${order.date.day}/${order.date.month}/${order.date.year}',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 10 : 11,
+                    color: Colors.grey[400],
                   ),
                 ),
               ],
