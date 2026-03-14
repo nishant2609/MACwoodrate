@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'home_screen.dart';
 import 'cft_calculator_screen.dart';
 import 'settings_screen.dart';
-import '../utils/company_profile.dart';
+import '../providers/auth_provider.dart';
+import 'auth/login_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -12,37 +14,24 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  String _companyName = 'WoodRate Pro';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCompanyName();
-  }
-
-  Future<void> _loadCompanyName() async {
-    final name = await CompanyProfile.getCompanyName();
-    if (mounted) {
-      setState(() {
-        _companyName = name ?? 'WoodRate Pro';
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 600;
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    // Get company name from Firebase
+    final companyName =
+        authProvider.currentCompany?.companyName ?? 'WoodRate Pro';
+    final ownerName = authProvider.currentCompany?.ownerName ?? '';
 
     return Scaffold(
       backgroundColor: Colors.brown[50],
       appBar: AppBar(
         title: FittedBox(
           child: Text(
-            _companyName,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 18 : 20,
-            ),
+            companyName,
+            style: TextStyle(fontSize: isSmallScreen ? 18 : 20),
           ),
         ),
         backgroundColor: Colors.brown,
@@ -54,13 +43,47 @@ class _MenuScreenState extends State<MenuScreen> {
             icon: const Icon(Icons.settings),
             tooltip: 'Settings',
             onPressed: () async {
-              final updated = await Navigator.push<bool>(
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                     builder: (context) => const SettingsScreen()),
               );
-              if (updated == true) {
-                _loadCompanyName();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Logout'),
+                  content:
+                  const Text('Are you sure you want to logout?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text(
+                        'Logout',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                await authProvider.signOut();
+                if (!context.mounted) return;
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const LoginScreen()),
+                );
               }
             },
           ),
@@ -97,7 +120,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                     SizedBox(height: isSmallScreen ? 12 : 16),
                     Text(
-                      _companyName,
+                      companyName,
                       style: TextStyle(
                         fontSize: isSmallScreen ? 20 : 24,
                         fontWeight: FontWeight.bold,
@@ -105,6 +128,16 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    if (ownerName.isNotEmpty) ...[
+                      SizedBox(height: isSmallScreen ? 4 : 6),
+                      Text(
+                        ownerName,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 13 : 15,
+                          color: Colors.brown[500],
+                        ),
+                      ),
+                    ],
                     SizedBox(height: isSmallScreen ? 6 : 8),
                     Text(
                       'Choose your calculation type',
@@ -158,7 +191,8 @@ class _MenuScreenState extends State<MenuScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const HomeScreen(),
+                              builder: (context) =>
+                              const HomeScreen(),
                             ),
                           );
                         },
@@ -320,11 +354,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   color: color.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  size: 40,
-                  color: color,
-                ),
+                child: Icon(icon, size: 40, color: color),
               ),
               const SizedBox(width: 20),
               Expanded(
@@ -352,11 +382,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   ],
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios,
-                color: color,
-                size: 20,
-              ),
+              Icon(Icons.arrow_forward_ios, color: color, size: 20),
             ],
           ),
         ),
