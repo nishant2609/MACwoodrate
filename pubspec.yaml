@@ -13,6 +13,7 @@ dependencies:
   pdf: ^3.10.4
   printing: ^5.11.0
   path_provider: ^2.1.1
+  share_plus: ^7.2.2
   intl: ^0.18.1
   image_picker: ^1.0.4
   provider: ^6.1.1

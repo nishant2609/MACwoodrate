@@ -24,17 +24,38 @@ class _HomeScreenState extends State<HomeScreen> {
   List<WoodComponent> woodComponents = [];
   final TextEditingController orderIdController = TextEditingController();
   final TextEditingController itemDescriptionController = TextEditingController();
+  final TextEditingController clientNameController = TextEditingController();
+  final TextEditingController clientCompanyController = TextEditingController();
+  final TextEditingController notesController = TextEditingController();
   final TextEditingController labourController = TextEditingController();
   final TextEditingController hardwareController = TextEditingController();
   final TextEditingController factoryController = TextEditingController();
   final TextEditingController profitController = TextEditingController();
+  String _selectedStatus = 'Pending';
 
-  // Additional charges functionality
   List<Map<String, TextEditingController>> additionalCharges = [];
 
   final _formKey = GlobalKey<FormState>();
-  final GlobalKey<WoodInputTileState> _woodInputKey = GlobalKey<WoodInputTileState>();
+  final GlobalKey<WoodInputTileState> _woodInputKey =
+  GlobalKey<WoodInputTileState>();
   String? selectedImagePath;
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Pending':
+        return Colors.orange;
+      case 'Confirmed':
+        return Colors.blue;
+      case 'In Progress':
+        return Colors.purple;
+      case 'Delivered':
+        return Colors.green;
+      case 'Cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
@@ -55,7 +76,8 @@ class _HomeScreenState extends State<HomeScreen> {
           await imageDir.create(recursive: true);
         }
 
-        final String fileName = 'item_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final String fileName =
+            'item_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final String savedImagePath = '$imageDirPath/$fileName';
 
         await File(image.path).copy(savedImagePath);
@@ -99,7 +121,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // Additional charges methods
   void _addAdditionalCharge() {
     setState(() {
       additionalCharges.add({
@@ -111,7 +132,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _removeAdditionalCharge(int index) {
     setState(() {
-      // Dispose controllers to prevent memory leaks
       additionalCharges[index]['name']?.dispose();
       additionalCharges[index]['amount']?.dispose();
       additionalCharges.removeAt(index);
@@ -120,15 +140,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   double get totalAdditionalCharges {
     return additionalCharges.fold<double>(0, (sum, charge) {
-      final amount = double.tryParse(charge['amount']?.text ?? '0') ?? 0;
+      final amount =
+          double.tryParse(charge['amount']?.text ?? '0') ?? 0;
       return sum + amount;
     });
   }
 
   void calculateAndNavigate() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     if (woodComponents.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -145,14 +164,16 @@ class _HomeScreenState extends State<HomeScreen> {
     double factory = double.tryParse(factoryController.text) ?? 0;
     double profit = double.tryParse(profitController.text) ?? 0;
 
-    double woodTotal = woodComponents.fold<double>(0, (sum, item) => sum + item.totalCost);
-    double otherCosts = labour + hardware + factory + totalAdditionalCharges;
+    double woodTotal = woodComponents.fold<double>(
+        0, (sum, item) => sum + item.totalCost);
+    double otherCosts =
+        labour + hardware + factory + totalAdditionalCharges;
     double subtotal = woodTotal + otherCosts;
     double profitAmount = subtotal * (profit / 100);
     double finalAmount = subtotal + profitAmount;
 
-    // Convert additional charges to the format expected by Order model
-    List<Map<String, dynamic>> orderAdditionalCharges = additionalCharges.map((charge) {
+    List<Map<String, dynamic>> orderAdditionalCharges =
+    additionalCharges.map((charge) {
       return {
         'name': charge['name']!.text,
         'amount': double.tryParse(charge['amount']!.text) ?? 0.0,
@@ -163,11 +184,21 @@ class _HomeScreenState extends State<HomeScreen> {
       orderId: orderIdController.text,
       itemDescription: itemDescriptionController.text,
       itemImagePath: selectedImagePath,
+      clientName: clientNameController.text.trim().isEmpty
+          ? null
+          : clientNameController.text.trim(),
+      clientCompany: clientCompanyController.text.trim().isEmpty
+          ? null
+          : clientCompanyController.text.trim(),
+      status: _selectedStatus,
+      notes: notesController.text.trim().isEmpty
+          ? null
+          : notesController.text.trim(),
       components: List.from(woodComponents),
       labour: labour,
       hardware: hardware,
       factory: factory,
-      additionalCharges: orderAdditionalCharges, // Include additional charges
+      additionalCharges: orderAdditionalCharges,
       profit: profitAmount,
       total: finalAmount,
       date: DateTime.now(),
@@ -191,19 +222,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     try {
-      // Save to local storage
       await OrderStorage.saveOrder(order);
 
-      // Save to Firestore
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!mounted) return;
+      final authProvider =
+      Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.currentCompany != null) {
         final orderService = OrderService();
-        await orderService.saveOrder(order, authProvider.currentCompany!.id);
+        await orderService.saveOrder(
+            order, authProvider.currentCompany!.id);
       }
 
+      if (!mounted) return;
       Navigator.of(context).pop();
-
-      // Reset wood type after saving order
       _woodInputKey.currentState?.resetWoodType();
 
       Navigator.push(
@@ -213,6 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -224,16 +256,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   double get totalWoodCost {
-    return woodComponents.fold<double>(0, (sum, item) => sum + item.totalCost);
+    return woodComponents.fold<double>(
+        0, (sum, item) => sum + item.totalCost);
   }
 
   double get totalCft {
-    return woodComponents.fold<double>(0, (sum, item) => sum + item.cft);
+    return woodComponents.fold<double>(
+        0, (sum, item) => sum + item.cft);
   }
 
   void _generateSampleOrderId() {
     final now = DateTime.now();
-    final orderId = 'ORD${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.millisecondsSinceEpoch.toString().substring(8)}';
+    final orderId =
+        'ORD${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.millisecondsSinceEpoch.toString().substring(8)}';
     setState(() {
       orderIdController.text = orderId;
     });
@@ -243,16 +278,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 600;
-    final isTablet = screenSize.width >= 600 && screenSize.width < 1200;
+    final isTablet =
+        screenSize.width >= 600 && screenSize.width < 1200;
 
     return Scaffold(
       appBar: AppBar(
-        title: FittedBox(
-          child: Text(
-            isSmallScreen ? 'Rate Finder' : 'Dining Table Rate Finder',
-            style: TextStyle(fontSize: isSmallScreen ? 18 : 20),
-          ),
-        ),
+        title: const Text('Wood Cost Estimator'),
         backgroundColor: Colors.brown,
         foregroundColor: Colors.white,
         actions: [
@@ -261,7 +292,9 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const OrderHistoryScreen()),
+                MaterialPageRoute(
+                    builder: (context) =>
+                    const OrderHistoryScreen()),
               );
             },
           ),
@@ -275,40 +308,76 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Order Information Card
+                // ═══════════════════════════════
+                // ORDER INFORMATION CARD
+                // ═══════════════════════════════
                 Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Padding(
-                    padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                    padding:
+                    EdgeInsets.all(isSmallScreen ? 12 : 16),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Order Information',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 16 : 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.brown
+                                    .withOpacity(0.1),
+                                borderRadius:
+                                BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.receipt_long,
+                                color: Colors.brown,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Order Information',
+                              style: TextStyle(
+                                fontSize:
+                                isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: isSmallScreen ? 12 : 16),
 
-                        // Order ID Section
+                        SizedBox(
+                            height: isSmallScreen ? 16 : 20),
+
+                        // Order ID
                         isSmallScreen
                             ? Column(
                           children: [
                             TextFormField(
                               controller: orderIdController,
-                              decoration: const InputDecoration(
+                              decoration:
+                              const InputDecoration(
                                 labelText: 'Order ID',
                                 border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.numbers),
-                                hintText: 'Enter unique order ID',
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                prefixIcon:
+                                Icon(Icons.numbers),
+                                hintText:
+                                'Enter unique order ID',
+                                contentPadding:
+                                EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8),
                               ),
                               validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
+                                if (value == null ||
+                                    value.trim().isEmpty) {
                                   return 'Please enter an order ID';
                                 }
-                                if (value.trim().length < 3) {
+                                if (value.trim().length<3) {
                                   return 'Order ID must be at least 3 characters';
                                 }
                                 return null;
@@ -318,12 +387,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                onPressed: _generateSampleOrderId,
-                                icon: const Icon(Icons.auto_awesome, size: 16),
-                                label: const Text('Auto Generate'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey[600],
-                                  foregroundColor: Colors.white,
+                                onPressed:
+                                _generateSampleOrderId,
+                                icon: const Icon(
+                                    Icons.auto_awesome,
+                                    size: 16),
+                                label: const Text(
+                                    'Auto Generate'),
+                                style:
+                                ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                  Colors.grey[600],
+                                  foregroundColor:
+                                  Colors.white,
                                 ),
                               ),
                             ),
@@ -335,17 +411,23 @@ class _HomeScreenState extends State<HomeScreen> {
                               flex: 3,
                               child: TextFormField(
                                 controller: orderIdController,
-                                decoration: const InputDecoration(
+                                decoration:
+                                const InputDecoration(
                                   labelText: 'Order ID',
-                                  border: OutlineInputBorder(),
-                                  prefixIcon: Icon(Icons.numbers),
-                                  hintText: 'Enter unique order ID',
+                                  border:
+                                  OutlineInputBorder(),
+                                  prefixIcon:
+                                  Icon(Icons.numbers),
+                                  hintText:
+                                  'Enter unique order ID',
                                 ),
                                 validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
+                                  if (value == null ||
+                                      value.trim().isEmpty) {
                                     return 'Please enter an order ID';
                                   }
-                                  if (value.trim().length < 3) {
+                                  if (value.trim().length<
+                                  3) {
                                     return 'Order ID must be at least 3 characters';
                                   }
                                   return null;
@@ -356,19 +438,26 @@ class _HomeScreenState extends State<HomeScreen> {
                             Expanded(
                               flex: 1,
                               child: ElevatedButton.icon(
-                                onPressed: _generateSampleOrderId,
-                                icon: const Icon(Icons.auto_awesome, size: 16),
+                                onPressed:
+                                _generateSampleOrderId,
+                                icon: const Icon(
+                                    Icons.auto_awesome,
+                                    size: 16),
                                 label: const Text('Auto'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey[600],
-                                  foregroundColor: Colors.white,
+                                style:
+                                ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                  Colors.grey[600],
+                                  foregroundColor:
+                                  Colors.white,
                                 ),
                               ),
                             ),
                           ],
                         ),
 
-                        SizedBox(height: isSmallScreen ? 12 : 16),
+                        SizedBox(
+                            height: isSmallScreen ? 12 : 16),
 
                         // Item Description
                         TextFormField(
@@ -377,11 +466,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             labelText: 'Item Description',
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.description),
-                            hintText: 'e.g., Dining Table 6-seater, Office Desk, etc.',
+                            hintText:
+                            'e.g., Dining Table 6-seater, Office Desk',
                           ),
                           maxLines: isSmallScreen ? 2 : 3,
                           validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
+                            if (value == null ||
+                                value.trim().isEmpty) {
                               return 'Please enter item description';
                             }
                             if (value.trim().length < 5) {
@@ -391,29 +482,239 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                         ),
 
-                        SizedBox(height: isSmallScreen ? 12 : 16),
+                        SizedBox(
+                            height: isSmallScreen ? 12 : 16),
 
-                        // Image Section
-                        Text(
-                          'Item Photo (Optional)',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 14 : 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.brown,
+                        // Order Status
+                        DropdownButtonFormField<String>(
+                          value: _selectedStatus,
+                          decoration: InputDecoration(
+                            labelText: 'Order Status',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: Icon(
+                              Icons.flag_outlined,
+                              color:
+                              _getStatusColor(_selectedStatus),
+                            ),
+                          ),
+                          items: [
+                            'Pending',
+                            'Confirmed',
+                            'In Progress',
+                            'Delivered',
+                            'Cancelled'
+                          ]
+                              .map((status) =>
+                              DropdownMenuItem(
+                                value: status,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: _getStatusColor(
+                                            status),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(status),
+                                  ],
+                                ),
+                              ))
+                              .toList(),
+                          onChanged: (value) {
+                            setState(
+                                    () => _selectedStatus = value!);
+                          },
+                        ),
+
+                        SizedBox(
+                            height: isSmallScreen ? 12 : 16),
+                      ],
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: isSmallScreen ? 12 : 16),
+
+                // ═══════════════════════════════
+                // CLIENT INFORMATION CARD
+                // ═══════════════════════════════
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding:
+                    EdgeInsets.all(isSmallScreen ? 12 : 16),
+                    child: Column(
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue
+                                    .withOpacity(0.1),
+                                borderRadius:
+                                BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.person_outline,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Client Information',
+                              style: TextStyle(
+                                fontSize:
+                                isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding:
+                              const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius:
+                                BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Optional',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.blue[600],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        SizedBox(
+                            height: isSmallScreen ? 16 : 20),
+
+                        // Client Name
+                        TextFormField(
+                          controller: clientNameController,
+                          textCapitalization:
+                          TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Client Name',
+                            border: OutlineInputBorder(),
+                            prefixIcon:
+                            Icon(Icons.person_outline),
+                            hintText: 'e.g., Rajesh Kumar',
                           ),
                         ),
-                        const SizedBox(height: 8),
+
+                        SizedBox(
+                            height: isSmallScreen ? 12 : 16),
+
+                        // Client Company
+                        TextFormField(
+                          controller: clientCompanyController,
+                          textCapitalization:
+                          TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Client Company',
+                            border: OutlineInputBorder(),
+                            prefixIcon:
+                            Icon(Icons.business_outlined),
+                            hintText:
+                            'e.g., Kumar Furniture House',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: isSmallScreen ? 12 : 16),
+
+                // ═══════════════════════════════
+                // ITEM PHOTO CARD
+                // ═══════════════════════════════
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding:
+                    EdgeInsets.all(isSmallScreen ? 12 : 16),
+                    child: Column(
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.green
+                                    .withOpacity(0.1),
+                                borderRadius:
+                                BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.green,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Item Photo',
+                              style: TextStyle(
+                                fontSize:
+                                isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding:
+                              const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green[50],
+                                borderRadius:
+                                BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Optional',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.green[600],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
 
                         if (selectedImagePath != null) ...[
                           Container(
                             height: isSmallScreen ? 150 : 200,
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius:
+                              BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: Colors.grey[300]!),
                             ),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius:
+                              BorderRadius.circular(8),
                               child: Image.file(
                                 File(selectedImagePath!),
                                 fit: BoxFit.cover,
@@ -421,45 +722,29 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          isSmallScreen
-                              ? Column(
-                            children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: _pickImage,
-                                  icon: const Icon(Icons.camera_alt),
-                                  label: const Text('Retake Photo'),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: _removeImage,
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  label: const Text('Remove Photo'),
-                                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                                ),
-                              ),
-                            ],
-                          )
-                              : Row(
+                          Row(
                             children: [
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: _pickImage,
-                                  icon: const Icon(Icons.camera_alt),
-                                  label: const Text('Retake Photo'),
+                                  icon: const Icon(
+                                      Icons.camera_alt),
+                                  label: const Text(
+                                      'Retake Photo'),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: _removeImage,
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  label: const Text('Remove Photo'),
-                                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
+                                  label: const Text(
+                                      'Remove Photo'),
+                                  style:
+                                  OutlinedButton.styleFrom(
+                                      foregroundColor:
+                                      Colors.red),
                                 ),
                               ),
                             ],
@@ -469,27 +754,32 @@ class _HomeScreenState extends State<HomeScreen> {
                             height: isSmallScreen ? 100 : 120,
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius:
+                              BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: Colors.grey[300]!),
                               color: Colors.grey[50],
                             ),
                             child: InkWell(
                               onTap: _pickImage,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius:
+                              BorderRadius.circular(8),
                               child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisAlignment:
+                                MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    Icons.camera_alt,
-                                    size: isSmallScreen ? 30 : 40,
-                                    color: Colors.grey,
-                                  ),
+                                  Icon(Icons.camera_alt,
+                                      size: isSmallScreen
+                                          ? 30
+                                          : 40,
+                                      color: Colors.grey),
                                   const SizedBox(height: 8),
                                   Text(
                                     'Tap to capture item photo',
                                     style: TextStyle(
                                       color: Colors.grey,
-                                      fontSize: isSmallScreen ? 12 : 14,
+                                      fontSize:
+                                      isSmallScreen ? 12 : 14,
                                     ),
                                   ),
                                 ],
@@ -505,78 +795,53 @@ class _HomeScreenState extends State<HomeScreen> {
                 SizedBox(height: isSmallScreen ? 16 : 20),
 
                 // Wood Input Section
-                WoodInputTile(key: _woodInputKey, onAddComponent: addWoodComponent),
+                WoodInputTile(
+                    key: _woodInputKey,
+                    onAddComponent: addWoodComponent),
 
                 SizedBox(height: isSmallScreen ? 16 : 20),
 
                 // Added Components Section
                 if (woodComponents.isNotEmpty) ...[
                   Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Padding(
-                      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                      padding: EdgeInsets.all(
+                          isSmallScreen ? 12 : 16),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                        CrossAxisAlignment.start,
                         children: [
-                          isSmallScreen
-                              ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Row(
+                            mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 'Added Components',
                                 style: TextStyle(
-                                  fontSize: isSmallScreen ? 16 : 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Total: ₹${totalWoodCost.toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontSize: isSmallScreen ? 14 : 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                  Text(
-                                    'CFT: ${totalCft.toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontSize: isSmallScreen ? 12 : 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          )
-                              : Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Added Components',
-                                style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize:
+                                  isSmallScreen ? 16 : 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                                crossAxisAlignment:
+                                CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    'Total: ₹${totalWoodCost.toStringAsFixed(2)}',
+                                    '₹${totalWoodCost.toStringAsFixed(2)}',
                                     style: const TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.green,
                                     ),
                                   ),
                                   Text(
-                                    'Total CFT: ${totalCft.toStringAsFixed(2)}',
+                                    '${totalCft.toStringAsFixed(2)} CFT',
                                     style: const TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.blue,
                                     ),
@@ -586,42 +851,53 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                           const SizedBox(height: 10),
-
-                          ...woodComponents.asMap().entries.map((entry) {
+                          ...woodComponents
+                              .asMap()
+                              .entries
+                              .map((entry) {
                             int index = entry.key;
                             WoodComponent component = entry.value;
                             return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
+                              margin: const EdgeInsets.only(
+                                  bottom: 8),
                               child: ListTile(
-                                contentPadding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+                                contentPadding: EdgeInsets.all(
+                                    isSmallScreen ? 8 : 12),
                                 title: Text(
                                   '${component.woodType} - ${component.formattedSize}',
-                                  style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+                                  style: TextStyle(
+                                      fontSize:
+                                      isSmallScreen ? 14 : 16),
                                 ),
                                 subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'CFT: ${component.cft.toStringAsFixed(2)} × ₹${component.ratePerCft} = ₹${component.totalCost.toStringAsFixed(2)}',
-                                      style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
+                                      'CFT: ${component.cft.toStringAsFixed(2)} × Rs.${component.ratePerCft} = Rs.${component.totalCost.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                          fontSize: isSmallScreen
+                                              ? 12
+                                              : 14),
                                     ),
                                     Text(
-                                      'Quantity: ${component.quantity} pieces',
+                                      'Qty: ${component.quantity} pcs',
                                       style: TextStyle(
                                         color: Colors.blue,
-                                        fontSize: isSmallScreen ? 11 : 12,
+                                        fontSize:
+                                        isSmallScreen ? 11 : 12,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ],
                                 ),
                                 trailing: IconButton(
-                                  icon: Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                    size: isSmallScreen ? 20 : 24,
-                                  ),
-                                  onPressed: () => removeWoodComponent(index),
+                                  icon: Icon(Icons.delete,
+                                      color: Colors.red,
+                                      size:
+                                      isSmallScreen ? 20 : 24),
+                                  onPressed: () =>
+                                      removeWoodComponent(index),
                                 ),
                               ),
                             );
@@ -633,42 +909,76 @@ class _HomeScreenState extends State<HomeScreen> {
                   SizedBox(height: isSmallScreen ? 16 : 20),
                 ],
 
-                // Costs Section
+                // ═══════════════════════════════
+                // COSTS CARD
+                // ═══════════════════════════════
                 Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Padding(
-                    padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                    padding:
+                    EdgeInsets.all(isSmallScreen ? 12 : 16),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Additional Costs',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 16 : 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange
+                                    .withOpacity(0.1),
+                                borderRadius:
+                                BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.attach_money,
+                                color: Colors.orange,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Additional Costs',
+                              style: TextStyle(
+                                fontSize:
+                                isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: isSmallScreen ? 12 : 16),
 
-                        // Standard Charges
+                        SizedBox(
+                            height: isSmallScreen ? 12 : 16),
+
                         if (isTablet) ...[
                           Row(
                             children: [
                               Expanded(
                                 child: TextFormField(
                                   controller: labourController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Labour Cost (₹)',
+                                  decoration:
+                                  const InputDecoration(
+                                    labelText: 'Labour Cost (Rs.)',
                                     border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.build),
+                                    prefixIcon:
+                                    Icon(Icons.build),
                                   ),
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType
+                                      .numberWithOptions(
+                                      decimal: true),
                                   validator: (value) {
-                                    if (value != null && value.isNotEmpty) {
-                                      if (double.tryParse(value) == null) {
-                                        return 'Please enter a valid number';
+                                    if (value != null &&
+                                        value.isNotEmpty) {
+                                      if (double.tryParse(value) ==
+                                          null) {
+                                        return 'Invalid number';
                                       }
                                       if (double.parse(value) < 0) {
-                                        return 'Labour cost cannot be negative';
+                                        return 'Cannot be negative';
                                       }
                                     }
                                     return null;
@@ -679,19 +989,26 @@ class _HomeScreenState extends State<HomeScreen> {
                               Expanded(
                                 child: TextFormField(
                                   controller: hardwareController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Hardware Cost (₹)',
+                                  decoration:
+                                  const InputDecoration(
+                                    labelText:
+                                    'Hardware Cost (Rs.)',
                                     border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.hardware),
+                                    prefixIcon:
+                                    Icon(Icons.hardware),
                                   ),
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType
+                                      .numberWithOptions(
+                                      decimal: true),
                                   validator: (value) {
-                                    if (value != null && value.isNotEmpty) {
-                                      if (double.tryParse(value) == null) {
-                                        return 'Please enter a valid number';
+                                    if (value != null &&
+                                        value.isNotEmpty) {
+                                      if (double.tryParse(value) ==
+                                          null) {
+                                        return 'Invalid number';
                                       }
                                       if (double.parse(value) < 0) {
-                                        return 'Hardware cost cannot be negative';
+                                        return 'Cannot be negative';
                                       }
                                     }
                                     return null;
@@ -706,19 +1023,26 @@ class _HomeScreenState extends State<HomeScreen> {
                               Expanded(
                                 child: TextFormField(
                                   controller: factoryController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Factory Charges (₹)',
+                                  decoration:
+                                  const InputDecoration(
+                                    labelText:
+                                    'Factory Charges (Rs.)',
                                     border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.factory),
+                                    prefixIcon:
+                                    Icon(Icons.factory),
                                   ),
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType
+                                      .numberWithOptions(
+                                      decimal: true),
                                   validator: (value) {
-                                    if (value != null && value.isNotEmpty) {
-                                      if (double.tryParse(value) == null) {
-                                        return 'Please enter a valid number';
+                                    if (value != null &&
+                                        value.isNotEmpty) {
+                                      if (double.tryParse(value) ==
+                                          null) {
+                                        return 'Invalid number';
                                       }
                                       if (double.parse(value) < 0) {
-                                        return 'Factory charges cannot be negative';
+                                        return 'Cannot be negative';
                                       }
                                     }
                                     return null;
@@ -732,18 +1056,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           TextFormField(
                             controller: labourController,
                             decoration: const InputDecoration(
-                              labelText: 'Labour Cost (₹)',
+                              labelText: 'Labour Cost (Rs.)',
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.build),
                             ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType
+                                .numberWithOptions(decimal: true),
                             validator: (value) {
-                              if (value != null && value.isNotEmpty) {
+                              if (value != null &&
+                                  value.isNotEmpty) {
                                 if (double.tryParse(value) == null) {
-                                  return 'Please enter a valid number';
+                                  return 'Invalid number';
                                 }
                                 if (double.parse(value) < 0) {
-                                  return 'Labour cost cannot be negative';
+                                  return 'Cannot be negative';
                                 }
                               }
                               return null;
@@ -753,18 +1079,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           TextFormField(
                             controller: hardwareController,
                             decoration: const InputDecoration(
-                              labelText: 'Hardware Cost (₹)',
+                              labelText: 'Hardware Cost (Rs.)',
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.hardware),
                             ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType
+                                .numberWithOptions(decimal: true),
                             validator: (value) {
-                              if (value != null && value.isNotEmpty) {
+                              if (value != null &&
+                                  value.isNotEmpty) {
                                 if (double.tryParse(value) == null) {
-                                  return 'Please enter a valid number';
+                                  return 'Invalid number';
                                 }
                                 if (double.parse(value) < 0) {
-                                  return 'Hardware cost cannot be negative';
+                                  return 'Cannot be negative';
                                 }
                               }
                               return null;
@@ -774,18 +1102,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           TextFormField(
                             controller: factoryController,
                             decoration: const InputDecoration(
-                              labelText: 'Factory Charges (₹)',
+                              labelText: 'Factory Charges (Rs.)',
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.factory),
                             ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType
+                                .numberWithOptions(decimal: true),
                             validator: (value) {
-                              if (value != null && value.isNotEmpty) {
+                              if (value != null &&
+                                  value.isNotEmpty) {
                                 if (double.tryParse(value) == null) {
-                                  return 'Please enter a valid number';
+                                  return 'Invalid number';
                                 }
                                 if (double.parse(value) < 0) {
-                                  return 'Factory charges cannot be negative';
+                                  return 'Cannot be negative';
                                 }
                               }
                               return null;
@@ -793,7 +1123,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
 
-                        // Additional Charges Section
+                        // Additional Charges
                         if (additionalCharges.isNotEmpty) ...[
                           const SizedBox(height: 16),
                           Text(
@@ -805,64 +1135,92 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-
-                          ...additionalCharges.asMap().entries.map((entry) {
+                          ...additionalCharges
+                              .asMap()
+                              .entries
+                              .map((entry) {
                             int index = entry.key;
-                            Map<String, TextEditingController> charge = entry.value;
-
+                            Map<String, TextEditingController>
+                            charge = entry.value;
                             return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
+                              margin: const EdgeInsets.only(
+                                  bottom: 8),
                               color: Colors.orange[50],
                               child: Padding(
-                                padding: const EdgeInsets.all(12),
+                                padding:
+                                const EdgeInsets.all(12),
                                 child: isSmallScreen
                                     ? Column(
                                   children: [
                                     TextFormField(
-                                      controller: charge['name'],
-                                      decoration: const InputDecoration(
-                                        labelText: 'Charge Name',
-                                        border: OutlineInputBorder(),
-                                        prefixIcon: Icon(Icons.label),
+                                      controller:
+                                      charge['name'],
+                                      decoration:
+                                      const InputDecoration(
+                                        labelText:
+                                        'Charge Name',
+                                        border:
+                                        OutlineInputBorder(),
+                                        prefixIcon: Icon(
+                                            Icons.label),
                                         isDense: true,
                                       ),
                                       validator: (value) {
-                                        if (value == null || value.trim().isEmpty) {
+                                        if (value == null ||
+                                            value
+                                                .trim()
+                                                .isEmpty) {
                                           return 'Enter charge name';
                                         }
                                         return null;
                                       },
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(
+                                        height: 8),
                                     Row(
                                       children: [
                                         Expanded(
-                                          child: TextFormField(
-                                            controller: charge['amount'],
-                                            decoration: const InputDecoration(
-                                              labelText: 'Amount (₹)',
-                                              border: OutlineInputBorder(),
-                                              prefixIcon: Icon(Icons.currency_rupee),
+                                          child:
+                                          TextFormField(
+                                            controller: charge[
+                                            'amount'],
+                                            decoration:
+                                            const InputDecoration(
+                                              labelText:
+                                              'Amount',
+                                              border:
+                                              OutlineInputBorder(),
+                                              prefixIcon: Icon(
+                                                  Icons
+                                                      .currency_rupee),
                                               isDense: true,
                                             ),
-                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                            keyboardType: const TextInputType
+                                                .numberWithOptions(
+                                                decimal: true),
                                             validator: (value) {
-                                              if (value != null && value.isNotEmpty) {
-                                                if (double.tryParse(value) == null) {
-                                                  return 'Invalid number';
-                                                }
-                                                if (double.parse(value) < 0) {
-                                                  return 'Cannot be negative';
+                                              if (value !=
+                                                  null &&
+                                                  value
+                                                      .isNotEmpty) {
+                                                if (double.tryParse(
+                                                    value) ==
+                                                    null) {
+                                                  return 'Invalid';
                                                 }
                                               }
                                               return null;
                                             },
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
                                         IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.red),
-                                          onPressed: () => _removeAdditionalCharge(index),
+                                          icon: const Icon(
+                                              Icons.delete,
+                                              color:
+                                              Colors.red),
+                                          onPressed: () =>
+                                              _removeAdditionalCharge(
+                                                  index),
                                         ),
                                       ],
                                     ),
@@ -873,15 +1231,23 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Expanded(
                                       flex: 2,
                                       child: TextFormField(
-                                        controller: charge['name'],
-                                        decoration: const InputDecoration(
-                                          labelText: 'Charge Name',
-                                          border: OutlineInputBorder(),
-                                          prefixIcon: Icon(Icons.label),
+                                        controller:
+                                        charge['name'],
+                                        decoration:
+                                        const InputDecoration(
+                                          labelText:
+                                          'Charge Name',
+                                          border:
+                                          OutlineInputBorder(),
+                                          prefixIcon: Icon(
+                                              Icons.label),
                                           isDense: true,
                                         ),
                                         validator: (value) {
-                                          if (value == null || value.trim().isEmpty) {
+                                          if (value == null ||
+                                              value
+                                                  .trim()
+                                                  .isEmpty) {
                                             return 'Enter charge name';
                                           }
                                           return null;
@@ -892,21 +1258,28 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Expanded(
                                       flex: 1,
                                       child: TextFormField(
-                                        controller: charge['amount'],
-                                        decoration: const InputDecoration(
-                                          labelText: 'Amount (₹)',
-                                          border: OutlineInputBorder(),
-                                          prefixIcon: Icon(Icons.currency_rupee),
+                                        controller:
+                                        charge['amount'],
+                                        decoration:
+                                        const InputDecoration(
+                                          labelText: 'Amount',
+                                          border:
+                                          OutlineInputBorder(),
+                                          prefixIcon: Icon(Icons
+                                              .currency_rupee),
                                           isDense: true,
                                         ),
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        keyboardType: const TextInputType
+                                            .numberWithOptions(
+                                            decimal: true),
                                         validator: (value) {
-                                          if (value != null && value.isNotEmpty) {
-                                            if (double.tryParse(value) == null) {
-                                              return 'Invalid number';
-                                            }
-                                            if (double.parse(value) < 0) {
-                                              return 'Cannot be negative';
+                                          if (value != null &&
+                                              value
+                                                  .isNotEmpty) {
+                                            if (double.tryParse(
+                                                value) ==
+                                                null) {
+                                              return 'Invalid';
                                             }
                                           }
                                           return null;
@@ -915,62 +1288,65 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     IconButton(
-                                      icon: const Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () => _removeAdditionalCharge(index),
+                                      icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.red),
+                                      onPressed: () =>
+                                          _removeAdditionalCharge(
+                                              index),
                                     ),
                                   ],
                                 ),
                               ),
                             );
                           }).toList(),
-
-                          if (additionalCharges.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.orange[100],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Additional Charges Total:',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  Text(
-                                    '₹${totalAdditionalCharges.toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.orange[800],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[100],
+                              borderRadius:
+                              BorderRadius.circular(8),
                             ),
-                          ],
+                            child: Row(
+                              mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Additional Total:',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  'Rs.${totalAdditionalCharges.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange[800],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
 
                         const SizedBox(height: 12),
 
-                        // Add Other Charges Button
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
                             onPressed: _addAdditionalCharge,
                             icon: const Icon(Icons.add),
-                            label: const Text('Add Other Charges'),
+                            label:
+                            const Text('Add Other Charges'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.orange[700],
-                              side: BorderSide(color: Colors.orange[300]!),
+                              side: BorderSide(
+                                  color: Colors.orange[300]!),
                             ),
                           ),
                         ),
 
                         const SizedBox(height: 12),
 
-                        // Profit Field
                         TextFormField(
                           controller: profitController,
                           decoration: const InputDecoration(
@@ -979,15 +1355,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             prefixIcon: Icon(Icons.percent),
                             hintText: 'e.g., 20 for 20%',
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType
+                              .numberWithOptions(decimal: true),
                           validator: (value) {
-                            if (value != null && value.isNotEmpty) {
+                            if (value != null &&
+                                value.isNotEmpty) {
                               if (double.tryParse(value) == null) {
-                                return 'Please enter a valid number';
+                                return 'Invalid number';
                               }
-                              double profit = double.parse(value);
-                              if (profit < 0 || profit > 100) {
-                                return 'Profit should be between 0-100%';
+                              double p = double.parse(value);
+                              if (p < 0 || p > 100) {
+                                return 'Profit should be 0-100%';
                               }
                             }
                             return null;
@@ -998,22 +1376,106 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
+                SizedBox(height: isSmallScreen ? 12 : 16),
+
+                // ═══════════════════════════════
+                // NOTES CARD
+                // ═══════════════════════════════
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding:
+                    EdgeInsets.all(isSmallScreen ? 12 : 16),
+                    child: Column(
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.purple
+                                    .withOpacity(0.1),
+                                borderRadius:
+                                BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.note_outlined,
+                                color: Colors.purple,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Notes',
+                              style: TextStyle(
+                                fontSize:
+                                isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding:
+                              const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.purple[50],
+                                borderRadius:
+                                BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Optional',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.purple[600],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: notesController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'Order Notes',
+                            border: OutlineInputBorder(),
+                            prefixIcon:
+                            Icon(Icons.note_outlined),
+                            hintText:
+                            'Any special requirements or notes...',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
                 SizedBox(height: isSmallScreen ? 24 : 30),
 
-                // Calculate Button
+                // Save Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: calculateAndNavigate,
                     icon: const Icon(Icons.save_alt),
                     label: Text(
-                      isSmallScreen ? 'Save & Calculate' : 'Save Order & Calculate',
-                      style: TextStyle(fontSize: isSmallScreen ? 16 : 18),
+                      'Save & Calculate',
+                      style: TextStyle(
+                          fontSize: isSmallScreen ? 16 : 18),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.brown,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 12 : 16),
+                      padding: EdgeInsets.symmetric(
+                          vertical: isSmallScreen ? 14 : 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -1031,17 +1493,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     orderIdController.dispose();
     itemDescriptionController.dispose();
+    clientNameController.dispose();
+    clientCompanyController.dispose();
+    notesController.dispose();
     labourController.dispose();
     hardwareController.dispose();
     factoryController.dispose();
     profitController.dispose();
-
-    // Dispose additional charges controllers
     for (var charge in additionalCharges) {
       charge['name']?.dispose();
       charge['amount']?.dispose();
     }
-
     super.dispose();
   }
 }
