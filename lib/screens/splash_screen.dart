@@ -119,10 +119,10 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.carpenter,
-                        size: 60,
-                        color: Colors.brown,
+                      child: Image.asset(
+                        'assets/images/app_icon.png',
+                        width: 80,
+                        height: 80,
                       ),
                     ),
 
