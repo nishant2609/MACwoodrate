@@ -13,7 +13,7 @@ if (keyPropertiesFile.exists()) {
 
 android {
     namespace = "com.nishantcreation.woodratepro"
-    compileSdk = 35
+    compileSdk = 36
     buildToolsVersion = "35.0.1"
     ndkVersion = flutter.ndkVersion
 
@@ -37,10 +37,10 @@ android {
 
     defaultConfig {
         applicationId = "com.nishantcreation.woodratepro"
-        minSdk = 23
+        minSdkVersion = flutter.minSdkVersion
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.0.2"
     }
 
     buildTypes {

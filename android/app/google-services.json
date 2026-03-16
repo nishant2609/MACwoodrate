@@ -22,6 +22,30 @@
           }
         },
         {
+          "client_id": "1025458686246-dpof126ei5s5cdhidoukf413bqlslf0d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nishantcreation.woodratepro",
+            "certificate_hash": "9c44ef41af7c1f5d0f3ba23c7cd00ff25e2a9017"
+          }
+        },
+        {
+          "client_id": "1025458686246-jcjhihb03st1tluv5t0sfen0n2p8r5hr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nishantcreation.woodratepro",
+            "certificate_hash": "5f51794e830a41312544c91822028b5dbc3434d0"
+          }
+        },
+        {
+          "client_id": "1025458686246-l0mv2059f5esgmcdf1eun3bddm7t134h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nishantcreation.woodratepro",
+            "certificate_hash": "273a9909524f740616c8ae90081fc0859155d949"
+          }
+        },
+        {
           "client_id": "1025458686246-33h2kkq6vif5aqve6g5ibdsak76d0sjj.apps.googleusercontent.com",
           "client_type": 3
         }
